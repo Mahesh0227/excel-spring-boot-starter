@@ -4,37 +4,43 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ExcelProcessor {
 
-    public Map<String, List<String>> read(InputStream is) {
+    public List<String> readColumnByHeader(InputStream is, String headerName) throws Exception {
 
-        Map<String, List<String>> result = new LinkedHashMap<>();
+        List<String> values = new ArrayList<>();
 
-        try (Workbook workbook = new XSSFWorkbook(is)) {
+        Workbook workbook = new XSSFWorkbook(is);
+        Sheet sheet = workbook.getSheetAt(0);
 
-            Sheet sheet = workbook.getSheetAt(0);
-            Row headerRow = sheet.getRow(0);
+        Row headerRow = sheet.getRow(0);
+        int targetCol = -1;
 
-            for (int col = 0; col < headerRow.getLastCellNum(); col++) {
-
-                String heading = headerRow.getCell(col).getStringCellValue();
-                List<String> values = new ArrayList<>();
-
-                for (int row = 1; row <= sheet.getLastRowNum(); row++) {
-                    Cell cell = sheet.getRow(row).getCell(col);
-                    if (cell != null) {
-                        values.add(cell.toString());
-                    }
-                }
-                result.put(heading, values);
+        for (Cell cell : headerRow) {
+            if (cell.getStringCellValue().equalsIgnoreCase(headerName)) {
+                targetCol = cell.getColumnIndex();
+                break;
             }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Excel read failed", e);
         }
 
-        return result;
+        if (targetCol == -1) {
+            throw new RuntimeException("Column not found: " + headerName);
+        }
+
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row != null) {
+                Cell cell = row.getCell(targetCol);
+                if (cell != null) {
+                    values.add(cell.toString());
+                }
+            }
+        }
+
+        workbook.close();
+        return values;
     }
 }
